@@ -150,12 +150,33 @@ Write-Host "  YT 歌詞字幕 v$VERSION 安裝程式" -ForegroundColor White
 Write-Host '  （日文歌詞／字幕＋假名＋翻譯、畫面字幕 OCR、AI 聽寫、伴奏與升降 Key）' -ForegroundColor Gray
 
 # ---------- 0. 安裝位置 ----------
+# 之前裝過（更新、加功能）：預設裝回原本的資料夾，不然裝在別處的人更新時會多裝出一份。
+# 從「啟動本機服務」小幫手的登錄找（<安裝資料夾>\app\native-host\*.json），那裡有安裝記號才算（開發用的資料夾不算）
+function Get-InstallDirFromManifest($m) {
+    if (-not $m) { return $null }
+    try { $d = Split-Path (Split-Path (Split-Path $m -Parent) -Parent) -Parent } catch { return $null }
+    if ($d -and (Test-Path -LiteralPath (Join-Path $d 'ytls-install.txt'))) { return $d }
+    return $null
+}
+function Find-PreviousDir {
+    foreach ($h in 'ytlyricsub.host', 'com.claude.ytls') {
+        $m = (Get-ItemProperty -LiteralPath "HKCU:\Software\Microsoft\Edge\NativeMessagingHosts\$h" -ErrorAction SilentlyContinue).'(default)'
+        $d = Get-InstallDirFromManifest $m
+        if ($d) { return $d }
+    }
+    return $null
+}
 if (-not $Dir) {
-    $Dir = Join-Path $env:LOCALAPPDATA 'YTLyricSub'
-    if ($Dir -match '[^\x00-\x7F]') { $Dir = 'C:\YTLyricSub' }  # 使用者名稱有中文：部分工具對非英文路徑不穩，改裝到 C:\YTLyricSub
+    $prev = Find-PreviousDir
+    if ($prev) { $Dir = $prev }
+    else {
+        $Dir = Join-Path $env:LOCALAPPDATA 'YTLyricSub'
+        if ($Dir -match '[^\x00-\x7F]') { $Dir = 'C:\YTLyricSub' }  # 使用者名稱有中文：部分工具對非英文路徑不穩，改裝到 C:\YTLyricSub
+    }
     if (-not $Yes) {
         Write-Host ''
         Write-Host "  要裝到：$Dir" -ForegroundColor White
+        if ($prev) { Write-Host '  （之前裝在這裡：更新、加功能都裝回這裡，下載過的東西不會重抓）' -ForegroundColor Gray }
         $ans = Read-Host '  直接按 Enter 用這個資料夾，或輸入其他資料夾（路徑請用英文）'
         if ($ans.Trim()) { $Dir = $ans.Trim().Trim('"') }
     }
