@@ -1,0 +1,191 @@
+/* ---------- 疊在影片上的字幕 ---------- */
+html.ytls-hide-native .ytp-caption-window-container { display: none !important; }
+
+.ytls-overlay {
+  position: absolute; left: 50%; bottom: var(--ytls-bottom, 10%);
+  transform: translateX(-50%);
+  width: 92%; z-index: 40; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; gap: 0.35em;
+  font-size: calc(var(--ytls-base, 22px) * var(--ytls-scale, 1));
+  font-family: "Noto Sans JP", "Noto Sans TC", "Microsoft JhengHei", "Yu Gothic UI", "Meiryo", sans-serif;
+  text-align: center; line-height: 1.3;
+  transition: bottom .2s ease;
+}
+#movie_player:not(.ytp-autohide) .ytls-overlay { bottom: calc(var(--ytls-bottom, 10%) + 48px); }
+/* 面板開著（面板寬 min(360px,70%) + 右邊距 12px）：字幕只用面板左邊的空間 */
+#movie_player.ytls-panel-open .ytls-overlay {
+  left: 12px; transform: none;
+  width: calc(100% - min(360px, 70%) - 36px);
+}
+.ytls-overlay[hidden], .ytls-line[hidden], .ytls-line > [hidden] { display: none !important; }
+
+.ytls-line {
+  display: inline-flex; flex-direction: column; align-items: center;
+  padding: .2em .6em; border-radius: .35em;
+  background: rgba(8, 8, 12, .55);
+  max-width: 100%;
+}
+.ytls-line > div { color: #fff; text-shadow: 0 0 3px #000, 0 0 2px #000; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ytls-cur .ytls-r { font-size: .55em; color: #ffd9a8; letter-spacing: .02em; }
+.ytls-cur .ytls-o { font-size: 1.1em; font-weight: 700; }
+.ytls-cur .ytls-t { font-size: .72em; color: #bfe3ff; }
+/* ---------- 卡拉 OK 排版：兩行交錯、逐字填色 ---------- */
+.ytls-k0, .ytls-k1 { display: none !important; }
+.ytls-ktv .ytls-cur, .ytls-ktv .ytls-next { display: none !important; }
+.ytls-ktv { align-items: stretch; gap: .15em; }
+.ytls-ktv .ytls-k0:not([hidden]), .ytls-ktv .ytls-k1:not([hidden]) { display: inline-flex !important; }
+.ytls-ktv .ytls-k0 { align-self: flex-start; margin-left: 3%; align-items: flex-start; }
+.ytls-ktv .ytls-k1 { align-self: flex-end; margin-right: 3%; align-items: flex-end; }
+.ytls-ktv .ytls-line { background: none; padding: 0 .2em; max-width: 94%; }
+.ytls-ktv .ytls-o {
+  font-size: 1.3em; font-weight: 800; line-height: 1.75;
+  background: linear-gradient(90deg, #4fc3ff var(--ytls-p, 0%), #ffffff var(--ytls-p, 0%));
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; text-shadow: none;
+  filter: drop-shadow(0 0 1.5px #000) drop-shadow(0 0 1.5px #000) drop-shadow(0 0 3px rgba(0,0,0,.8));
+}
+.ytls-ktv .ytls-o rt { color: transparent; font-size: .45em; }
+.ytls-ktv .ytls-r { font-size: .5em; color: #ffd9a8; }
+.ytls-ktv .ytls-t { font-size: .66em; color: #cfeaff; font-weight: 700; }
+/* 卡拉 OK 排版沒有底色：翻譯、拼音也要跟原文一樣的黑邊，白色畫面上才看得清楚（以前只有很薄的陰影） */
+.ytls-ktv .ytls-t, .ytls-ktv .ytls-r {
+  text-shadow: none;
+  filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000) drop-shadow(0 0 2.5px rgba(0,0,0,.9));
+}
+
+/* 假名標註 */
+.ytls-line ruby { ruby-position: over; ruby-align: center; }
+.ytls-fo ruby { ruby-align: center; }
+.ytls-line rt { font-size: .52em; font-weight: 500; color: #ffd9a8; letter-spacing: 0; line-height: 1.1; }
+.ytls-cur .ytls-o:has(ruby) { line-height: 1.75; }
+.ytls-k .ytls-cur .ytls-o rt { color: transparent; }
+.ytls-next rt { color: rgba(255, 217, 168, .6); }
+.ytls-fo ruby { ruby-position: over; }
+.ytls-fo rt { font-size: .6em; color: #c9a77c; }
+.ytls-fo:has(ruby) { line-height: 1.9; }
+
+.ytls-next { background: rgba(8, 8, 12, .35); }
+.ytls-next .ytls-o { font-size: .7em; color: rgba(255, 255, 255, .6); font-weight: 500; }
+
+/* 卡拉 OK 填色：已唱部分變橘色 */
+.ytls-k .ytls-cur .ytls-o {
+  background: linear-gradient(90deg, #ffb347 var(--ytls-p, 0%), #fff var(--ytls-p, 0%));
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; text-shadow: none;
+  filter: drop-shadow(0 0 2px #000) drop-shadow(0 0 1px #000);
+}
+
+/* ---------- YouTube Music：固定在播放列上方的卡拉 OK 歌詞條（逛別的頁面也看得到）---------- */
+/* 位置由 content.js 的 layoutYtm() 算：播放頁打開時疊在影片下緣、跟影片同寬；逛別的頁面時在中間內容區、播放列上方 */
+html.ytls-ytm .ytls-overlay {
+  position: fixed; z-index: 2000; transform: none;
+  left: var(--ytls-l, 5vw); width: var(--ytls-w, 90vw); bottom: var(--ytls-b, 90px);
+  transition: left .25s ease, width .25s ease, bottom .25s ease;
+}
+html.ytls-ytm .ytls-ktv .ytls-k0 { margin-left: 2%; }
+html.ytls-ytm .ytls-ktv .ytls-k1 { margin-right: 2%; }
+/* YouTube Music 的頁面背景是各種封面圖：每行加半透明底色才看得清楚 */
+html.ytls-ytm .ytls-ktv .ytls-line:not([hidden]),
+html.ytls-ytm .ytls-line.ytls-cur {
+  background: rgba(10, 10, 14, .62); border-radius: .4em; padding: 0 .5em;
+  backdrop-filter: blur(6px);
+}
+html.ytls-ytm .ytls-panel {
+  position: fixed; top: 72px; right: 12px; z-index: 2001;
+  width: min(380px, 60vw); max-height: calc(100vh - 72px - 96px);
+}
+html.ytls-ytm .ytls-btn {
+  width: 40px; height: 40px; margin: auto 4px; padding: 0; border: 0; border-radius: 50%;
+  background: none; cursor: pointer; color: #fff; opacity: .85;
+  font: 700 18px/40px "Microsoft JhengHei", "Noto Sans TC", sans-serif; text-align: center;
+}
+html.ytls-ytm .ytls-btn:hover { opacity: 1; color: #ffb347; background: rgba(255, 255, 255, .1); }
+
+/* ---------- 控制列按鈕 ---------- */
+.ytls-btn.ytp-button {
+  font: 700 17px/1 "Microsoft JhengHei", sans-serif !important; color: #fff;
+  text-align: center; vertical-align: top; opacity: .9;
+}
+.ytls-btn.ytp-button:hover { opacity: 1; color: #ffb347; }
+
+/* ---------- 面板 ---------- */
+.ytls-panel {
+  position: absolute; top: 12px; right: 12px; z-index: 80;
+  width: min(360px, 70%); max-height: calc(100% - 70px);
+  display: flex; flex-direction: column;
+  background: rgba(22, 22, 28, .94); color: #eee;
+  border: 1px solid rgba(255, 255, 255, .12); border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, .5);
+  font: 13px/1.45 "Microsoft JhengHei", "Noto Sans TC", "Yu Gothic UI", sans-serif;
+  overflow: hidden;
+}
+.ytls-panel[hidden], .ytls-pane[hidden] { display: none !important; }
+.ytls-panel button, .ytls-panel input, .ytls-panel select {
+  font: inherit; color: inherit;
+}
+.ytls-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px 4px; }
+/* 面板高度不夠時只讓內容區捲動，標題、狀態列、分頁按鈕不被擠壓重疊 */
+.ytls-head, .ytls-status, .ytls-tabs { flex: none; }
+.ytls-head b { color: #ffb347; font-size: 14px; }
+.ytls-x { background: none; border: 0; cursor: pointer; font-size: 15px; padding: 2px 6px; border-radius: 4px; }
+.ytls-x:hover { background: rgba(255, 255, 255, .12); }
+.ytls-status { padding: 0 10px 6px; color: #aab; font-size: 12px; min-height: 1em; }
+.ytls-tabs { display: flex; gap: 4px; padding: 0 10px 6px; border-bottom: 1px solid rgba(255, 255, 255, .08); }
+.ytls-tab { flex: 1; background: rgba(255, 255, 255, .06); border: 0; border-radius: 6px; padding: 5px 0; cursor: pointer; }
+.ytls-tab.on { background: #ffb347; color: #222; font-weight: 700; }
+.ytls-pane { overflow-y: auto; padding: 8px 10px 10px; min-height: 0; flex: 1; }
+.ytls-sub { margin: 10px 0 4px; color: #ffcf8a; font-size: 12px; }
+.ytls-sub:first-child { margin-top: 0; }
+.ytls-row { display: flex; gap: 6px; align-items: center; margin: 4px 0; flex-wrap: wrap; }
+.ytls-row button, .ytls-off button {
+  background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 6px; padding: 4px 8px; cursor: pointer;
+}
+.ytls-row button:hover { background: rgba(255, 255, 255, .18); }
+.ytls-row .ytls-primary { background: #ffb347; color: #222; border-color: #ffb347; font-weight: 700; }
+.ytls-q {
+  flex: 1; min-width: 0; background: rgba(0, 0, 0, .35); border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 6px; padding: 5px 8px; outline: none;
+}
+.ytls-q:focus { border-color: #ffb347; }
+.ytls-panel select { background: #2a2a33; border: 1px solid rgba(255, 255, 255, .18); border-radius: 6px; padding: 3px 6px; }
+.ytls-list { display: flex; flex-direction: column; gap: 3px; max-height: 210px; overflow-y: auto; }
+.ytls-item {
+  display: flex; justify-content: space-between; gap: 8px; text-align: left;
+  background: rgba(255, 255, 255, .05); border: 1px solid transparent; border-radius: 6px;
+  padding: 5px 8px; cursor: pointer;
+}
+.ytls-item:hover { background: rgba(255, 255, 255, .12); }
+.ytls-item.on { border-color: #ffb347; background: rgba(255, 179, 71, .15); }
+.ytls-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ytls-tag { flex: none; color: #99a; font-size: 11px; }
+.ytls-empty { color: #889; padding: 4px 2px; }
+.ytls-offv { min-width: 64px; text-align: center; font-variant-numeric: tabular-nums; color: #ffcf8a; }
+.ytls-hint { color: #889; font-size: 11px; }
+.ytls-chk, .ytls-range { display: flex; align-items: center; gap: 6px; margin: 3px 0; cursor: pointer; }
+.ytls-range input { flex: 1; accent-color: #ffb347; }
+.ytls-chk input { accent-color: #ffb347; }
+
+.ytls-full { display: flex; flex-direction: column; gap: 2px; }
+.ytls-fl { padding: 4px 6px; border-radius: 6px; cursor: pointer; }
+.ytls-fl:hover { background: rgba(255, 255, 255, .08); }
+.ytls-fl.on { background: rgba(255, 179, 71, .2); }
+.ytls-fl.on .ytls-fo { color: #ffb347; }
+.ytls-fr { color: #c9a77c; font-size: 11px; }
+.ytls-fo { font-size: 14px; }
+.ytls-ft { color: #9cc7e8; font-size: 12px; }
+.ytls-gap { color: #556; text-align: center; font-size: 11px; }
+
+/* ---------- 伴奏分頁 ---------- */
+.ytls-kinfo { margin: 6px 0; padding: 6px 8px; border-radius: 6px; background: rgba(255, 255, 255, .06); color: #dde; font-size: 12px; line-height: 1.5; }
+.ytls-row button[hidden] { display: none; }
+
+/* 情境列：唱歌／看影片／直播 */
+.ytls-scene { flex: none; padding: 0 10px 6px; }
+.ytls-scene .ytls-row { margin: 0 0 4px; gap: 4px; align-items: center; }
+.ytls-chip { flex: 1; background: rgba(255, 255, 255, .06); color: inherit; border: 1px solid rgba(255, 255, 255, .12); border-radius: 999px; padding: 4px 0; cursor: pointer; font: inherit; }
+.ytls-chip.on { background: rgba(255, 179, 71, .18); border-color: #ffb347; color: #ffcf8a; font-weight: 700; }
+.ytls-chip:disabled { opacity: .35; cursor: default; }
+.ytls-chip.sm { flex: none; padding: 2px 10px; font-size: 12px; }
+.ytls-vv span { flex: 1; font-size: 12px; color: #aab; }
+.ytls-scene[hidden] { display: none; }

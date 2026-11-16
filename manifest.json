@@ -1,0 +1,79 @@
+{
+  "manifest_version": 3,
+  "name": "YT 歌詞字幕",
+  "version": "1.0.64",
+  "description": "在 YouTube／YouTube Music 上顯示日文歌詞／字幕、假名、羅馬拼音與中文翻譯，卡拉 OK 排版，聽歌也能跟著唱。",
+  "permissions": [
+    "storage",
+    "nativeMessaging",
+    "offscreen"
+  ],
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "https://music.youtube.com/*",
+    "https://lrclib.net/*",
+    "https://translate.googleapis.com/*",
+    "http://localhost:8766/*",
+    "http://localhost:8767/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://music.youtube.com/*"
+      ],
+      "js": [
+        "hook.js"
+      ],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://music.youtube.com/*"
+      ],
+      "js": [
+        "lib/shared.js",
+        "lib/kanjifix.js",
+        "lib/ocr.js",
+        "lib/ocrprep.js",
+        "content.js"
+      ],
+      "css": [
+        "overlay.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "YT 歌詞字幕",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/16.png",
+      "32": "icons/32.png",
+      "48": "icons/48.png",
+      "128": "icons/128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "lib/pcm-worklet.js"
+      ],
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://music.youtube.com/*"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+# 檔案原樣存進 git，不轉換換行：.cmd／.ps1 要 CRLF，Windows 批次檔換成 LF 會出錯
+* -text

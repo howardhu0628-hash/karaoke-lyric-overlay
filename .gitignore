@@ -1,0 +1,17 @@
+# 打包產出、快取、記錄
+dist/
+transcripts/
+listen-server/cache/
+listen-server/tmp/
+__pycache__/
+*.pyc
+*.log
+*.part
+
+# 每台電腦自己產生的設定
+ytls-config.json
+native-host/ytlyricsub.host.json
+
+# 測試影片、別人影片的辨識資料
+*.mp4
+dev/frames/

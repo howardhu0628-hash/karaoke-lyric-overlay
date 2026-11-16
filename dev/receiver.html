@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head><meta charset="utf-8"><title>畫面接收器</title></head>
+<body style="font:13px sans-serif;background:#111;color:#ccc">
+<!-- 開發用：YouTube 頁面的 CSP 擋連本機，所以由 YouTube 頁開這個小視窗，用 postMessage 把畫面／資料傳過來存檔 -->
+<div id="log">等待資料…</div>
+<script>
+  let n = 0;
+  window.addEventListener('message', async (e) => {
+    if (!/^https:\/\/www\.youtube\.com$/.test(e.origin)) return;
+    const d = e.data || {};
+    try {
+      if (d.type === 'frame') {
+        const blob = await (await fetch(d.dataUrl)).blob();
+        await fetch('/save-frame?name=' + encodeURIComponent(d.name), { method: 'POST', body: blob });
+      } else if (d.type === 'json') {
+        await fetch('/save?name=' + encodeURIComponent(d.name), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(d.data) });
+      }
+      document.getElementById('log').textContent = '已收到 ' + (++n) + ' 筆';
+      e.source.postMessage({ type: 'ack', id: d.id }, e.origin);
+    } catch (err) {
+      e.source.postMessage({ type: 'ack', id: d.id, error: String(err) }, e.origin);
+    }
+  });
+  const host = window.opener || (window.parent !== window ? window.parent : null); // 小視窗或內嵌 iframe 都可以
+  if (host) host.postMessage({ type: 'ready' }, 'https://www.youtube.com');
+</script>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>YT 歌詞字幕 測試頁</title>
+<!-- 開發用：假的 YouTube 播放器＋假的 chrome.* API，載入真正的 content.js / background.js / overlay.css -->
+<link rel="stylesheet" href="/overlay.css">
+<style>
+  body { margin: 0; background: #0f0f0f; color: #ddd; font: 13px sans-serif; }
+  #movie_player { position: relative; width: 960px; height: 540px; margin: 16px; background: #000; overflow: hidden; }
+  #movie_player video { width: 100%; height: 100%; }
+  .ytp-chrome-bottom { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; display: flex; justify-content: flex-end; background: linear-gradient(transparent, rgba(0,0,0,.6)); }
+  .ytp-right-controls { display: flex; align-items: center; padding-right: 12px; }
+  .ytp-button { width: 48px; height: 48px; background: none; border: 0; cursor: pointer; color: #fff; }
+  #movie_player.ytp-autohide .ytp-chrome-bottom { opacity: 0; }
+</style>
+</head>
+<body>
+<div id="movie_player" class="html5-video-player">
+  <video src="/dev/test.mp4" muted playsinline></video>
+  <div class="ytp-caption-window-container"></div>
+  <div class="ytp-chrome-bottom"><div class="ytp-right-controls"><button class="ytp-button ytp-subtitles-button" aria-pressed="false">CC</button></div></div>
+</div>
+<div style="margin:0 16px">網址參數：?v=test&amp;title=...&amp;author=...&amp;len=秒數</div>
+<script>
+  // ---- 假的 chrome.* ----
+  const mem = { sync: {}, local: {} }, listeners = [];
+  const area = (name) => ({
+    async get(keys) {
+      if (keys && typeof keys === 'object' && !Array.isArray(keys)) return { ...keys, ...mem[name] };
+      if (typeof keys === 'string') return keys in mem[name] ? { [keys]: mem[name][keys] } : {};
+      return { ...mem[name] };
+    },
+    async set(obj) {
+      const changes = {};
+      for (const [k, v] of Object.entries(obj)) { changes[k] = { oldValue: mem[name][k], newValue: v }; mem[name][k] = v; }
+      listeners.forEach((fn) => fn(changes, name));
+    },
+    async remove(keys) {
+      const changes = {};
+      for (const k of [].concat(keys)) if (k in mem[name]) { changes[k] = { oldValue: mem[name][k] }; delete mem[name][k]; }
+      listeners.forEach((fn) => fn(changes, name));
+    },
+    async getBytesInUse() { return new TextEncoder().encode(JSON.stringify(mem[name])).length; },
+  });
+  let bgListener = null;
+  window.chrome = {
+    storage: { sync: area('sync'), local: area('local'), onChanged: { addListener: (fn) => listeners.push(fn) } },
+    runtime: {
+      // content.js 用 runtime.id 判斷擴充功能還在不在（沒有的話當成「已經更新」一直重新整理頁面）；background.js 啟動時會掛 onStartup
+      id: 'harness', getManifest: () => ({ version: 'harness' }), getURL: (p) => '/' + p, reload: () => {},
+      onStartup: { addListener: () => {} },
+      onMessage: { addListener: (fn) => { bgListener = fn; } },
+      sendMessage: (msg) => new Promise((resolve) => { bgListener(msg, {}, resolve); }),
+    },
+  };
+  window.importScripts = () => {};
+  // ?ix=1：載入測試用的訊息攔截（dev/harness-intercept.js），content.js 一開始送的訊息就攔得到
+  if (new URLSearchParams(location.search).get('ix')) {
+    const x = new XMLHttpRequest(); x.open('GET', '/dev/harness-intercept.js', false); x.send(); (0, eval)(x.responseText);
+  }
+
+  // ---- 假的 hook.js（播放器資訊）----
+  // ?fx=<素材名> 會載入 dev/fixtures/<素材名>.json（從 YouTube 抓的標題、說明欄、自動字幕）
+  const qp = new URLSearchParams(location.search);
+  const fakeInfo = {
+    videoId: qp.get('v') || 'test',
+    title: qp.get('title') || 'ミライトレイン「星のかけら」 Official Music Video',
+    author: qp.get('author') || 'ミライトレイン',
+    lengthSeconds: Number(qp.get('len') || 261), tracks: [], captionsOn: false, description: '',
+    category: qp.get('cat') || '', // ?cat=Entertainment 測「不是音樂影片 → 節目模式」
+  };
+  let fixture = null;
+  if (qp.get('fx')) {
+    const x = new XMLHttpRequest();
+    x.open('GET', '/dev/fixtures/' + qp.get('fx') + '.json', false); x.send();
+    fixture = JSON.parse(x.responseText);
+    Object.assign(fakeInfo, { videoId: fixture.videoId, title: fixture.title, author: fixture.author, lengthSeconds: fixture.lengthSeconds, description: fixture.desc,
+      tracks: fixture.asr ? [{ baseUrl: '/fixture-asr?v=' + fixture.videoId, languageCode: 'ja', kind: 'asr', vssId: 'a.ja', name: '日文 (自動產生)', isTranslatable: true }] : [] });
+    if (qp.get('len')) fakeInfo.lengthSeconds = Number(qp.get('len'));
+    if (qp.get('live')) fakeInfo.isLive = true; // 假裝正在直播（測邊播邊聽寫） // 假裝影片長度不同（測翻唱版重新對時）
+    const realFetch = window.fetch;
+    window.fetch = (u, o) => (String(u).includes('/fixture-asr') ? Promise.resolve(new Response(JSON.stringify(fixture.asr))) : realFetch(u, o));
+  }
+  // ?video=<路徑> 換測試影片（例如 /dev/test-lyrics.mp4：畫面上有燒錄歌詞，測 OCR 用）
+  if (qp.get('video')) document.querySelector('#movie_player video').src = qp.get('video');
+  // ?ytm=1：假的 YouTube Music 播放列（測固定在下方的歌詞條與「詞」按鈕）
+  if (qp.get('ytm')) {
+    const bar = document.createElement('ytmusic-player-bar');
+    bar.setAttribute('slot', 'player-bar');
+    bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;height:72px;background:#212121;display:flex;justify-content:flex-end;align-items:center;z-index:5';
+    const rc = document.createElement('div'); rc.className = 'right-controls-buttons'; rc.style.cssText = 'display:flex;padding-right:16px';
+    bar.append(rc); document.body.append(bar);
+  }
+  window.addEventListener('message', (e) => {
+    const d = e.data;
+    if (!d || d.ns !== 'ytls' || d.dir !== 'req') return;
+    window.postMessage({ ns: 'ytls', dir: 'res', id: d.id, data: d.cmd === 'info' ? fakeInfo : d.cmd === 'vid' ? fakeInfo.videoId : true }, location.origin);
+  });
+  // 滑鼠離開播放器 → 控制列隱藏
+  const mp = document.getElementById('movie_player');
+  mp.classList.add('ytp-autohide');
+  mp.addEventListener('mouseenter', () => mp.classList.remove('ytp-autohide'));
+  mp.addEventListener('mouseleave', () => mp.classList.add('ytp-autohide'));
+</script>
+<script src="/lib/shared.js"></script>
+<script src="/lib/furigana.js"></script>
+<script src="/lib/align.js"></script>
+<script src="/lib/kanjifix.js"></script>
+<script src="/lib/ocr.js"></script>
+<script src="/lib/ocrprep.js"></script>
+<script src="/vendor/kuromoji/kuromoji.js"></script>
+<script src="/lib/tokenize.js"></script>
+<script src="/background.js"></script>
+<script>
+  // ?cjs=/dev/某個舊版.js：改載入另一份 content.js（拿舊版當對照組，確認測試真的抓得到 bug）
+  document.write('<script src="' + (/^\/dev\/[\w.-]+\.js$/.test(qp.get('cjs') || '') ? qp.get('cjs') : '/content.js') + '"><\/script>');
+</script>
+</body>
+</html>

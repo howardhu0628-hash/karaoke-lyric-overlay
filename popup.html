@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>YT 歌詞字幕</title>
+<style>
+  body { width: 270px; margin: 0; padding: 12px 14px; font: 13px/1.5 "Microsoft JhengHei", sans-serif; background: #1d1d24; color: #eee; }
+  h1 { font-size: 15px; margin: 0 0 8px; color: #ffb347; }
+  label { display: flex; align-items: center; gap: 8px; margin: 6px 0; white-space: nowrap; }
+  /* min-width:0：選項文字很長（優先來源）時選單照樣縮在 270px 裡，不要把整個視窗撐寬、把左邊的標題擠成直排 */
+  select { flex: 1 1 0; min-width: 0; width: 0; background: #2a2a33; color: #eee; border: 1px solid #444; border-radius: 6px; padding: 3px 6px; font: inherit; }
+  input[type=checkbox] { accent-color: #ffb347; }
+  .hint { color: #889; font-size: 12px; margin-top: 10px; border-top: 1px solid #333; padding-top: 8px; }
+  b { color: #ffcf8a; font-weight: 600; }
+  #cloudBox { margin: 4px 0 2px; padding: 8px; border: 1px solid #3a3a46; border-radius: 8px; background: #23232c; }
+  @media (min-width: 400px) { body { margin: 32px auto; } } /* 從面板「☁ 雲端聽寫設定」開成分頁時置中（小視窗本身只有 270px） */
+  [hidden] { display: none !important; } /* label 是 display:flex，會蓋過 hidden（分級安裝時要藏 AI 聽寫那一行） */
+  .row { display: flex; gap: 6px; }
+  #groqKey { flex: 1; min-width: 0; background: #2a2a33; color: #eee; border: 1px solid #444; border-radius: 6px; padding: 4px 6px; font: 12px Consolas, monospace; }
+  button { background: #ffb347; color: #1d1d24; border: 0; border-radius: 6px; padding: 3px 10px; font: inherit; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  #keyMsg { min-height: 1.5em; font-size: 12px; margin-top: 4px; }
+  #keyMsg.ok { color: #8fd48f; } #keyMsg.bad { color: #ff8f8f; }
+  ol, ul { margin: 4px 0 0; padding-left: 18px; font-size: 12px; color: #bbc; }
+  li { margin: 1px 0; }
+  a { color: #ffcf8a; }
+</style>
+</head>
+<body>
+  <h1>YT 歌詞字幕</h1>
+  <label><input type="checkbox" id="enabled"> 啟用</label>
+  <label>優先來源
+    <select id="mode">
+      <option value="auto">自動（音樂影片當唱歌；其他影片當看影片；直播中當直播）</option>
+      <option value="lyrics">唱歌優先（同步歌詞）</option>
+      <option value="captions">字幕軌優先（一般影片）</option>
+      <option value="talk">看影片優先（字幕 → 畫面字幕 → AI 聽寫）</option>
+    </select>
+  </label>
+  <label>排版
+    <select id="layout">
+      <option value="ktv">卡拉 OK（兩行交錯、逐字填色）</option>
+      <option value="stack">置中（目前句＋下一句）</option>
+    </select>
+  </label>
+  <label>翻譯成
+    <select id="targetLang">
+      <option value="zh-TW">繁體中文</option>
+      <option value="zh-CN">简体中文</option>
+      <option value="ja">日本語</option>
+      <option value="en">English</option>
+    </select>
+  </label>
+  <label>AI 聽寫
+    <select id="listenEngine">
+      <option value="local">本機（用自己的顯示卡）</option>
+      <option value="cloud">雲端（Groq，免費額度）</option>
+    </select>
+  </label>
+  <div id="noListen" class="hint" hidden>AI 聽寫、伴奏沒有安裝：再雙擊一次「安裝.cmd」，選 3（雲端聽寫）或 4（全部）就有。</div>
+  <div id="cloudBox" hidden>
+    <div class="row">
+      <input id="groqKey" type="password" placeholder="貼上 Groq 金鑰（gsk_ 開頭）" autocomplete="off" spellcheck="false">
+      <button id="testKey">測試</button>
+    </div>
+    <div id="keyMsg"></div>
+    <ol>
+      <li>到 <a href="https://console.groq.com/keys" id="groqLink">console.groq.com/keys</a> 註冊（可用 Google 帳號）</li>
+      <li>按 Create API Key，複製 gsk_ 開頭那串</li>
+      <li>貼到上面，按「測試」</li>
+    </ol>
+    <ul>
+      <li>不用顯示卡，聲音會傳到 Groq 聽寫</li>
+      <li>免費額度：一般影片一天用不完，直播約 3 小時</li>
+      <li id="fallbackNote">額度用完、金鑰錯、沒網路 → 自動改用本機</li>
+      <li>本機聽寫服務還是要開（負責下載音訊、送出去）</li>
+    </ul>
+  </div>
+  <div class="hint">
+    在影片播放器右下角點 <b>詞</b> 開面板：手動搜尋歌詞、換字幕軌、調時間偏移與顯示方式。<br>
+    面板最上面可以切換 🎤 唱歌／🎬 看影片／📡 直播。每部影片選過的模式、歌詞和偏移都會記住。
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

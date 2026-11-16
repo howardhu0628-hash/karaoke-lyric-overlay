@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>popup 測試頁</title>
+</head>
+<body>
+<script>
+  // 開發用：載入真正的 popup.html（版面、樣式）和 popup.js，配上假的 chrome API。
+  // ?tier=1～4 假裝安裝等級（分級安裝）；?engine=cloud&key=... 預先放好設定
+  const qp = new URLSearchParams(location.search);
+  const mem = { sync: {}, local: {} };
+  if (qp.get('engine')) mem.local.listenEngine = qp.get('engine');
+  if (qp.get('key')) mem.local.groqKey = qp.get('key');
+  const area = (name) => ({
+    async get(keys) {
+      if (keys && typeof keys === 'object' && !Array.isArray(keys)) return { ...keys, ...mem[name] };
+      if (typeof keys === 'string') return keys in mem[name] ? { [keys]: mem[name][keys] } : {};
+      return { ...mem[name] };
+    },
+    async set(obj) { Object.assign(mem[name], obj); },
+  });
+  window.chrome = {
+    storage: { sync: area('sync'), local: area('local') },
+    runtime: {
+      sendMessage: async (m) => m.type === 'installInfo' ? { ok: true, data: { tier: Number(qp.get('tier') || 4), installed: true } }
+        : m.type === 'cloudTest' ? { ok: true, data: { valid: true, message: '（測試頁：沒有真的去問）' } } : { ok: false, error: '測試頁沒有這個' },
+    },
+    tabs: { create: () => {} },
+  };
+  const x = new XMLHttpRequest(); x.open('GET', '/popup.html', false); x.send();
+  const doc = new DOMParser().parseFromString(x.responseText, 'text/html');
+  document.head.append(...doc.head.querySelectorAll('style'));
+  doc.body.querySelectorAll('script').forEach((s) => s.remove());
+  document.body.append(...doc.body.childNodes);
+  const s = document.createElement('script'); s.src = '/popup.js'; document.body.append(s);
+</script>
+</body>
+</html>
