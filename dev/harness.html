@@ -28,6 +28,10 @@
   // ?sync={...}：先放好設定（測「升級前就有設定的使用者」）；?uilang=zh-TW：假裝 Edge 的介面語言
   const qs0 = new URLSearchParams(location.search);
   try { if (qs0.get('sync')) Object.assign(mem.sync, JSON.parse(qs0.get('sync'))); } catch (e) { /* 格式不對就不管 */ }
+  if (qs0.get('uilang')) { // 偏好的網頁語言（content.js 先看這個）
+    Object.defineProperty(navigator, 'languages', { get: () => [qs0.get('uilang')] });
+    Object.defineProperty(navigator, 'language', { get: () => qs0.get('uilang') });
+  }
   const area = (name) => ({
     async get(keys) {
       if (keys && typeof keys === 'object' && !Array.isArray(keys)) return { ...keys, ...mem[name] };

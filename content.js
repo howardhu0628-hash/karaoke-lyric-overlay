@@ -37,8 +37,10 @@
   function wantCN(v) {
     if (v === 'zh-CN') return true;
     if (v === 'zh-TW') return false;
+    // 先看「偏好的網頁語言」第一順位（使用者習慣讀什麼），沒有才看 Edge 介面語言：
+    // 有人 Edge 介面是簡體、偏好語言卻是繁體（zh-TW 排第一），這種人要繁體
     let l = '';
-    try { l = (chrome.i18n && chrome.i18n.getUILanguage && chrome.i18n.getUILanguage()) || navigator.language || ''; } catch (e) { l = navigator.language || ''; }
+    try { l = (navigator.languages && navigator.languages[0]) || navigator.language || (chrome.i18n && chrome.i18n.getUILanguage && chrome.i18n.getUILanguage()) || ''; } catch (e) { l = navigator.language || ''; }
     return /^zh(-(cn|sg|hans).*)?$/i.test(l); // 只寫 zh（沒有地區）也當簡體；台灣、香港、澳門是繁體
   }
 

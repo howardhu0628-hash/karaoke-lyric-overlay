@@ -8,7 +8,8 @@ const orig = new Map();
 function wantCN(v) {
   if (v === 'zh-CN') return true;
   if (v === 'zh-TW') return false;
-  const l = (chrome.i18n && chrome.i18n.getUILanguage && chrome.i18n.getUILanguage()) || navigator.language || '';
+  // 先看偏好的網頁語言第一順位，沒有才看 Edge 介面語言（跟 content.js 一樣）
+  const l = (navigator.languages && navigator.languages[0]) || navigator.language || (chrome.i18n && chrome.i18n.getUILanguage && chrome.i18n.getUILanguage()) || '';
   return /^zh(-(cn|sg|hans).*)?$/i.test(l);
 }
 function setText(el, s) { el.dataset.src = s; el.textContent = T(s); }
