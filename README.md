@@ -80,6 +80,8 @@ Edge 擴充功能。在 YouTube、YouTube Music 上疊一層卡拉 OK 字幕：
 ## 注意事項
 
 - 下載 YouTube 音訊、使用 YouTube Music 歌詞，可能不符合 YouTube 的使用條款。請只用在個人學習和欣賞，自行負責。
+- **翻譯是 Google 翻譯的機器翻譯**，可能不準。用的是 Google 翻譯網頁版的免費介面（不是官方付費的 Cloud Translation API），Google 隨時可能限制或停用；要翻譯的歌詞、字幕文字會送到 Google。
+- 同步歌詞來自 [LRCLIB](https://lrclib.net)（社群整理的公開歌詞資料庫）；AI 聽寫的雲端選項由 [Groq](https://groq.com) 提供。
 - 會員限定、需要登入的影片下載不了，會改成邊播邊聽寫。
 - 目前只支援 Windows＋Edge。Chrome 理論上能載入，但沒測過，安裝程式也只註冊 Edge。
 

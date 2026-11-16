@@ -2443,6 +2443,7 @@
         chk('talkView', '節目／直播自動切換顯示（照「字幕顯示」的選擇：只顯示中文／中日都顯示／只顯示日文，不顯示羅馬拼音）'),
         chk('ocr', '讀取畫面上的歌詞（OCR，需開本機 OCR 服務）'),
         h('div', { class: 'ytls-row' }, '翻譯成 ', langSel),
+        h('div', { class: 'ytls-hint' }, '翻譯：Google 翻譯（機器翻譯，可能不準；要翻譯的歌詞、字幕文字會送到 Google）'),
         h('div', { class: 'ytls-row' }, '介面語言 ', uiSel),
         range('fontScale', '字體大小', 0.6, 2, 0.1), range('bottom', '離底部距離', 2, 45, 1)),
     };

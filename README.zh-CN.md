@@ -81,7 +81,8 @@ Edge 浏览器扩展。在 YouTube、YouTube Music 上叠一层卡拉 OK 字幕�
 
 - 下载 YouTube 音频、使用 YouTube Music 歌词，可能不符合 YouTube 的服务条款。请只用于个人学习和欣赏，风险自负。
 - 会员限定、需要登录的视频无法下载，会改为边播边听写。
-- 翻译用的是 Google 翻译，在无法访问 Google 的网络环境下不能用。
+- **翻译是 Google 翻译的机器翻译**，可能不准。用的是 Google 翻译网页版的免费接口（不是官方付费的 Cloud Translation API），Google 随时可能限制或停用；要翻译的歌词、字幕文本会发送到 Google。在无法访问 Google 的网络环境下不能用。
+- 同步歌词来自 [LRCLIB](https://lrclib.net)（社区整理的公开歌词数据库）；AI 听写的云端选项由 [Groq](https://groq.com) 提供。
 - 目前只支持 Windows＋Edge。Chrome 理论上也能加载，但没有测试过，安装程序也只注册 Edge。
 
 ## 开发
