@@ -1,3 +1,5 @@
+繁體中文 | [简体中文](README.zh-CN.md)
+
 # YT 歌詞字幕
 
 Edge 擴充功能。在 YouTube、YouTube Music 上疊一層卡拉 OK 字幕：
