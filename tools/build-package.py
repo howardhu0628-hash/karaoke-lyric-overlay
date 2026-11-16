@@ -61,6 +61,13 @@ def to_zhcn(text):
 
 
 def main():
+    # 先確認 Edge 載入得了（v1.0.66、v1.0.67 漏了 default_locale，Edge「無法加載擴展」，兩版安裝包都裝不起來）
+    import subprocess
+    node = shutil.which("node") or r"F:\tools\nodejs\node.exe"
+    r = subprocess.run([node, str(ROOT / "tools" / "check-manifest.js"), str(ROOT)], capture_output=True, text=True, encoding="utf-8")
+    print((r.stdout or r.stderr).strip())
+    if r.returncode != 0:
+        sys.exit("manifest 檢查沒過，不打包")
     if OUT.exists():
         shutil.rmtree(OUT)
     app = OUT / "app"
