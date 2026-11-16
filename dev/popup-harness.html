@@ -12,6 +12,8 @@
   const mem = { sync: {}, local: {} };
   if (qp.get('engine')) mem.local.listenEngine = qp.get('engine');
   if (qp.get('key')) mem.local.groqKey = qp.get('key');
+  // ?sync={...}：先放好設定（測升級前就有設定的使用者）；?uilang=zh-CN：假裝 Edge 的介面語言
+  try { if (qp.get('sync')) Object.assign(mem.sync, JSON.parse(qp.get('sync'))); } catch (e) { /* 格式不對就不管 */ }
   const area = (name) => ({
     async get(keys) {
       if (keys && typeof keys === 'object' && !Array.isArray(keys)) return { ...keys, ...mem[name] };
@@ -27,13 +29,17 @@
         : m.type === 'cloudTest' ? { ok: true, data: { valid: true, message: '（測試頁：沒有真的去問）' } } : { ok: false, error: '測試頁沒有這個' },
     },
     tabs: { create: () => {} },
+    i18n: { getUILanguage: () => qp.get('uilang') || navigator.language },
   };
   const x = new XMLHttpRequest(); x.open('GET', '/popup.html', false); x.send();
   const doc = new DOMParser().parseFromString(x.responseText, 'text/html');
   document.head.append(...doc.head.querySelectorAll('style'));
   doc.body.querySelectorAll('script').forEach((s) => s.remove());
   document.body.append(...doc.body.childNodes);
-  const s = document.createElement('script'); s.src = '/popup.js'; document.body.append(s);
+  // 照 popup.html 的順序：先轉換表、再 popup.js
+  const z = document.createElement('script'); z.src = '/lib/zhcn.js';
+  z.onload = () => { const s = document.createElement('script'); s.src = '/popup.js'; document.body.append(s); };
+  document.body.append(z);
 </script>
 </body>
 </html>

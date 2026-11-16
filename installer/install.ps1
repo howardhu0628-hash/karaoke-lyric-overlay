@@ -22,6 +22,8 @@ param(
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
+# 介面語言：Windows 是簡體中文時，畫面上的字轉成簡體（安裝包裡在 app\lib，開發資料夾在 ..\lib）
+foreach ($zp in (Join-Path $PSScriptRoot 'app\lib\zhcn.ps1'), (Join-Path $PSScriptRoot '..\lib\zhcn.ps1')) { if (Test-Path -LiteralPath $zp) { . $zp; break } }
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $PKG = $PSScriptRoot
 $VERSION = '1.0'

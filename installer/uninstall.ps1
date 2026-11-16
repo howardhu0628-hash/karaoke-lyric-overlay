@@ -2,6 +2,8 @@
 # Edge 裡的擴充功能要自己到 edge://extensions 按「移除」。
 param([switch]$Yes)
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
+# 介面語言：Windows 是簡體中文時，畫面上的字轉成簡體
+foreach ($zp in (Join-Path $PSScriptRoot 'app\lib\zhcn.ps1'), (Join-Path $PSScriptRoot '..\lib\zhcn.ps1')) { if (Test-Path -LiteralPath $zp) { . $zp; break } }
 $Dir = $PSScriptRoot
 # 安裝程式只把東西放進這些位置（舊版可能裝在本來就有別的東西的資料夾，例如 D:\AI：其他檔案不能動）。
 # tools、models、downloads 是常見的名字，只刪安裝程式放進去的那幾個，刪完變空了才刪資料夾本身

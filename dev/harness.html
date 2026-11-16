@@ -25,6 +25,9 @@
 <script>
   // ---- 假的 chrome.* ----
   const mem = { sync: {}, local: {} }, listeners = [];
+  // ?sync={...}：先放好設定（測「升級前就有設定的使用者」）；?uilang=zh-TW：假裝 Edge 的介面語言
+  const qs0 = new URLSearchParams(location.search);
+  try { if (qs0.get('sync')) Object.assign(mem.sync, JSON.parse(qs0.get('sync'))); } catch (e) { /* 格式不對就不管 */ }
   const area = (name) => ({
     async get(keys) {
       if (keys && typeof keys === 'object' && !Array.isArray(keys)) return { ...keys, ...mem[name] };
@@ -46,6 +49,7 @@
   let bgListener = null;
   window.chrome = {
     storage: { sync: area('sync'), local: area('local'), onChanged: { addListener: (fn) => listeners.push(fn) } },
+    i18n: { getUILanguage: () => qs0.get('uilang') || navigator.language },
     runtime: {
       // content.js 用 runtime.id 判斷擴充功能還在不在（沒有的話當成「已經更新」一直重新整理頁面）；background.js 啟動時會掛 onStartup
       id: 'harness', getManifest: () => ({ version: 'harness' }), getURL: (p) => '/' + p, reload: () => {},
@@ -103,6 +107,7 @@
   mp.addEventListener('mouseenter', () => mp.classList.remove('ytp-autohide'));
   mp.addEventListener('mouseleave', () => mp.classList.add('ytp-autohide'));
 </script>
+<script src="/lib/zhcn.js"></script>
 <script src="/lib/shared.js"></script>
 <script src="/lib/furigana.js"></script>
 <script src="/lib/align.js"></script>

@@ -16,6 +16,7 @@
     hideNative: true, karaoke: false, fontScale: 1, bottom: 10, layout: 'ktv', ocr: true, talkView: true,
     kara: false, karaVol: 0.9, guideVol: 0, // 真‧卡拉 OK：伴奏開關、伴奏音量、原唱（導唱）音量
     vidView: 'zh', // 看影片／直播（日文字幕、AI 聽寫）：'zh' 只顯示中文、'both' 中日都顯示、'ja' 只顯示日文（有假名）
+    uiLang: 'auto', // 介面語言：'auto' 跟著 Edge 的介面語言、'zh-TW' 繁體、'zh-CN' 簡體
   };
   let settings = { ...DEFAULTS };
   // 字體大小、離底部距離：YouTube 與 YouTube Music 各記各的（Music 存成 ytm_fontScale / ytm_bottom）
@@ -25,6 +26,22 @@
 
   // ---------- 小工具 ----------
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  // ---------- 介面語言 ----------
+  // 簡體中文時，介面文字在顯示前才轉成簡體（lib/zhcn.js）。歌詞、翻譯、歌名、標題這些「資料」不能轉（日文漢字會被改掉）：
+  // 放進 h() 的用 R(文字)（純文字節點，不轉），拼進狀態列這種字串裡的用 D(文字) 標起來（轉換時跳過、顯示時拿掉標記）
+  const Z = globalThis.YTLSZh;
+  let uiCN = false, targetSaved = false; // targetSaved：使用者自己選過翻譯語言（沒選過的跟著介面語言）
+  const D = (x) => (Z ? Z.protect(x) : String(x));
+  const R = (x) => document.createTextNode(Z ? Z.strip(x) : String(x));
+  const zh = (s) => (s == null ? '' : !Z ? String(s) : uiCN ? Z.convert(s) : Z.strip(s));
+  function wantCN(v) {
+    if (v === 'zh-CN') return true;
+    if (v === 'zh-TW') return false;
+    let l = '';
+    try { l = (chrome.i18n && chrome.i18n.getUILanguage && chrome.i18n.getUILanguage()) || navigator.language || ''; } catch (e) { l = navigator.language || ''; }
+    return /^zh(-(cn|sg|hans).*)?$/i.test(l); // 只寫 zh（沒有地區）也當簡體；台灣、香港、澳門是繁體
+  }
+
   function h(tag, props, ...kids) {
     const el = document.createElement(tag);
     for (const [k, v] of Object.entries(props || {})) {
@@ -32,10 +49,12 @@
       if (k === 'class') el.className = v;
       else if (k === 'dataset') Object.assign(el.dataset, v);
       else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+      else if ((k === 'title' || k === 'placeholder') && typeof v === 'string') el.setAttribute(k, zh(v));
       else if (k in el && typeof v !== 'string') el[k] = v;
       else el.setAttribute(k, v === true ? '' : v);
     }
-    for (const c of kids.flat()) if (c != null && c !== false) el.append(c.nodeType ? c : String(c));
+    // 字串是介面文字（簡體時會轉）；資料要用 R() 包成文字節點放進來
+    for (const c of kids.flat()) if (c != null && c !== false) el.append(c.nodeType ? c : zh(String(c)));
     return el;
   }
   const player = () => document.getElementById('movie_player');
@@ -460,7 +479,7 @@
 
   async function useLyrics(c, token, save = true) {
     if (save) st.manual = true; // 在面板上手動點的來源：之後不自動切換
-    const label = (c.trackName || '?') + ' — ' + (c.artistName || '?');
+    const label = D((c.trackName || '?') + ' — ' + (c.artistName || '?')); // 歌名是資料：介面切成簡體時不轉
     const ranked = st.info ? S.rankCandidates([c], { title: st.info.title, author: st.info.author, duration: st.info.lengthSeconds })[0] : c;
     const durDiff = st.info && c.duration ? Math.abs(c.duration - st.info.lengthSeconds) : 0;
     const otherVersion = durDiff > 3 || (st.info && S.isCoverTitle(st.info.title) && !ranked.artistMatch);
@@ -1112,22 +1131,22 @@
     else if (kara.state === 'on' && r) {
       const site = { bilibili: 'B 站', niconico: 'niconico' }[r.site] || 'YouTube';
       text = r.kind === 'source'
-        ? '使用中：' + site + ' 上的伴奏「' + r.title + '」' + (r.channel && r.site !== 'niconico' ? '（' + r.channel + '）' : '') +
+        ? '使用中：' + site + ' 上的伴奏「' + D(r.title) + '」' + (r.channel && r.site !== 'niconico' ? '（' + D(r.channel) + '）' : '') +
           (kara.segs.length > 1 ? '・影片有剪接，分 ' + kara.segs.length + ' 段對時' : '') +
           (r.coverage < 0.95 ? '・沒對上的段落（例如 MV 劇情）播原聲' : '')
         : '使用中：AI 去人聲（從這部影片的聲音分離出伴奏，偶爾殘留一點人聲或和聲）';
     } else if (kara.state === 'error') text = '伴奏失敗：' + kara.detail;
     else if (kara.state) text = '準備中：' + (kara.detail || kara.state) + '…';
     else text = '這部影片沒有開伴奏（節目、直播不會自動開）。按「重新找伴奏」可以手動開。';
-    ui.karaInfo.textContent = text;
+    ui.karaInfo.textContent = zh(text);
     const on = kara.state === 'on';
-    ui.keyv.textContent = kara.keyBusy || kara.keyWant !== kara.key
+    ui.keyv.textContent = zh(kara.keyBusy || kara.keyWant !== kara.key
       ? fmtKey(kara.key) + ' → ' + fmtKey(kara.keyWant) + (kara.keyBusy ? '　變調中…' : '')
-      : fmtKey(kara.key);
+      : fmtKey(kara.key));
     for (const b of ui.keyBtns) b.disabled = !on;
-    ui.keyHint.textContent = kara.keyErr ? '變調失敗：' + kara.keyErr
+    ui.keyHint.textContent = zh(kara.keyErr ? '變調失敗：' + kara.keyErr
       : !on ? '伴奏開好之後才能調 Key。'
-        : kara.key ? '已變調：原唱（導唱）會自動關掉，音高才不會打架。這首歌會記住這個 Key。' : '變調不改變速度。第一次約 5～10 秒，做好會記住；調過之後相鄰的 ±1 會先在背景做好，再按幾乎馬上換。';
+        : kara.key ? '已變調：原唱（導唱）會自動關掉，音高才不會打架。這首歌會記住這個 Key。' : '變調不改變速度。第一次約 5～10 秒，做好會記住；調過之後相鄰的 ±1 會先在背景做好，再按幾乎馬上換。');
     ui.karaRetry.hidden = !HAS.listen() || (!settings.kara && !kara.state);
     ui.karaAi.hidden = !HAS.sep() || !(kara.state === 'on' && r && r.kind === 'source');
   }
@@ -1482,7 +1501,7 @@
     st.choice = { kind: 'ytm', videoId: r.videoId };
     renderTracks();
     if (save) await setPref({ choice: st.choice });
-    const label = 'YouTube Music 歌詞' + (r.viaSearch ? '（原曲 ' + r.title + ' / ' + r.artist + '）' : '') + (r.source ? '・' + r.source : '');
+    const label = 'YouTube Music 歌詞' + (r.viaSearch ? '（原曲 ' + D(r.title + ' / ' + r.artist) + '）' : '') + (r.source ? '・' + D(r.source) : '');
     // 有逐句時間：當參考時間，再用這部影片的自動字幕／畫面歌詞校正（MV 的前奏常和音源版不同）
     return usePlainLines(r.lines, label, token, false, r.prior);
   }
@@ -2080,12 +2099,12 @@
 
   async function useTrack(track, token, save = true) {
     if (save) st.manual = true; // 在面板上手動點的來源：之後不自動切換
-    setStatus('讀取字幕：' + track.name + '…');
+    setStatus('讀取字幕：' + D(track.name) + '…');
     const cues = await fetchTrack(track);
     if (token !== st.token) return true;
-    if (!cues.length) { setStatus('字幕「' + track.name + '」讀取失敗。'); return false; }
+    if (!cues.length) { setStatus('字幕「' + D(track.name) + '」讀取失敗。'); return false; }
     const isAsr = track.kind === 'asr';
-    setCues(cues, 'yt', track.name + (isAsr && !/自動|auto/i.test(track.name) ? '（自動產生）' : ''));
+    setCues(cues, 'yt', D(track.name) + (isAsr && !/自動|auto/i.test(track.name) ? '（自動產生）' : ''));
     st.isAsr = isAsr;
     if (isAsr) setStatus(st.status + '　※ 自動字幕在配樂段落常亂辨識，已過濾雜訊' + (ocrReady() && !st.talk ? '；畫面上出現歌詞時會改用 OCR' : ''));
     st.srcLang = track.languageCode;
@@ -2121,7 +2140,7 @@
       }
       if (parts.length) { c.trH = parts.join(' '); c.trHl = tl; c.tr = c.trH; n++; }
     }
-    if (n) st.label += '＋上傳者的' + t.name;
+    if (n) st.label += '＋上傳者的' + D(t.name);
     return n ? { n, name: t.name } : null;
   }
 
@@ -2339,6 +2358,18 @@
     de.setProperty('--ytls-base', base.toFixed(1) + 'px');
   }
 
+  // 換了介面語言：面板、「詞」按鈕的文字是建立時就寫好的，整個重建（開著的面板、分頁照舊）
+  function rebuildUI() {
+    const wasOpen = !!(ui.panel && !ui.panel.hidden), tab = ui.curTab, q = ui.q ? ui.q.value : '';
+    if (ui.panel) ui.panel.remove();
+    if (ui.btn) ui.btn.remove();
+    ui.panel = null; ui.btn = null;
+    ensureUI();
+    if (ui.q && q) ui.q.value = q; // 搜尋框裡的字（歌名）照舊
+    if (wasOpen) { togglePanel(true); if (tab) showTab(tab); }
+    renderAll();
+  }
+
   function togglePanel(force) {
     if (!ui.panel) return;
     const show = force != null ? force : ui.panel.hidden;
@@ -2369,8 +2400,10 @@
     const range = (key, label, min, max, step) => h('label', { class: 'ytls-range' }, label,
       h('input', { type: 'range', min: String(min), max: String(max), step: String(step), dataset: { set: key }, oninput: (e) => saveSetting(key, Number(e.target.value)) }));
     const langSel = h('select', { dataset: { set: 'targetLang' }, onchange: (e) => saveSetting('targetLang', e.target.value) },
-      h('option', { value: 'zh-TW' }, '繁體中文'), h('option', { value: 'zh-CN' }, '简体中文'),
-      h('option', { value: 'ja' }, '日本語'), h('option', { value: 'en' }, 'English'));
+      h('option', { value: 'zh-TW' }, R('繁體中文')), h('option', { value: 'zh-CN' }, R('简体中文')), // 語言名稱照各自的寫法，不轉
+      h('option', { value: 'ja' }, R('日本語')), h('option', { value: 'en' }, 'English'));
+    const uiSel = h('select', { dataset: { set: 'uiLang' }, onchange: (e) => saveSetting('uiLang', e.target.value) },
+      h('option', { value: 'auto' }, '跟著 Edge'), h('option', { value: 'zh-TW' }, R('繁體中文')), h('option', { value: 'zh-CN' }, R('简体中文')));
 
     ui.panes = {
       src: h('section', { class: 'ytls-pane' },
@@ -2410,6 +2443,7 @@
         chk('talkView', '節目／直播自動切換顯示（照「字幕顯示」的選擇：只顯示中文／中日都顯示／只顯示日文，不顯示羅馬拼音）'),
         chk('ocr', '讀取畫面上的歌詞（OCR，需開本機 OCR 服務）'),
         h('div', { class: 'ytls-row' }, '翻譯成 ', langSel),
+        h('div', { class: 'ytls-row' }, '介面語言 ', uiSel),
         range('fontScale', '字體大小', 0.6, 2, 0.1), range('bottom', '離底部距離', 2, 45, 1)),
     };
     ui.panel = h('div', { class: 'ytls-panel', hidden: true },
@@ -2455,7 +2489,7 @@
     const q = ui.q.value.trim();
     if (!q || !st.info) return;
     const token = st.token;
-    setStatus('搜尋「' + q + '」…');
+    setStatus('搜尋「' + D(q) + '」…');
     try {
       const r = await searchLyrics([q]);
       if (token !== st.token) return;
@@ -2465,7 +2499,7 @@
 
   function renderStatus() {
     if (!ui.status) return;
-    ui.status.textContent = st.status + (st.translating ? '　翻譯中…' : '');
+    ui.status.textContent = zh(st.status + (st.translating ? '　翻譯中…' : ''));
   }
 
   function renderCands() {
@@ -2479,8 +2513,8 @@
         const d = Math.round(c.duration - st.info.lengthSeconds);
         tags.push(S.fmtTime(c.duration) + (Math.abs(d) <= 2 ? '' : '（' + (d > 0 ? '+' : '') + d + 's）'));
       }
-      return h('button', { class: 'ytls-item' + (on ? ' on' : ''), title: c.albumName || '', onclick: () => pickCand(c) },
-        h('span', { class: 'ytls-name' }, (c.trackName || '?') + ' — ' + (c.artistName || '?')),
+      return h('button', { class: 'ytls-item' + (on ? ' on' : ''), title: c.albumName ? D(c.albumName) : '', onclick: () => pickCand(c) },
+        h('span', { class: 'ytls-name' }, R((c.trackName || '?') + ' — ' + (c.artistName || '?'))),
         h('span', { class: 'ytls-tag' }, tags.join(' · ')));
     }) : [h('div', { class: 'ytls-empty' }, '（還沒有候選）')]));
   }
@@ -2500,7 +2534,7 @@
       const on = st.choice && st.choice.kind === 'ytm';
       items.push(h('button', { class: 'ytls-item' + (on ? ' on' : ''), onclick: () => useYtm(st.token, true) },
         h('span', { class: 'ytls-name' }, 'YouTube Music 歌詞（' + st.ytm.lines.length + ' 行）' + (st.ytm.viaSearch ? '・原曲' : '')),
-        h('span', { class: 'ytls-tag' }, (st.ytm.prior ? '逐句時間' : '自動對時') + (st.ytm.source ? '・' + st.ytm.source : ''))));
+        h('span', { class: 'ytls-tag' }, (st.ytm.prior ? '逐句時間' : '自動對時') + (st.ytm.source ? '・' + D(st.ytm.source) : ''))));
     } else if (st.ytm === null && !st.ytmSearched) {
       items.push(h('button', { class: 'ytls-item', onclick: () => useYtm(st.token, true, false, true) },
         h('span', { class: 'ytls-name' }, 'YouTube Music 搜原曲歌詞'), h('span', { class: 'ytls-tag' }, '翻唱用')));
@@ -2558,7 +2592,7 @@
     for (const t of list) {
       const on = st.choice && st.choice.kind === 'yt' && st.choice.vssId === t.vssId;
       items.push(h('button', { class: 'ytls-item' + (on ? ' on' : ''), onclick: () => useTrack(t, st.token, true) },
-        h('span', { class: 'ytls-name' }, t.name), h('span', { class: 'ytls-tag' }, t.kind === 'asr' ? '自動產生' : '上傳者提供')));
+        h('span', { class: 'ytls-name' }, R(t.name)), h('span', { class: 'ytls-tag' }, t.kind === 'asr' ? '自動產生' : '上傳者提供')));
     }
     ui.tracks.replaceChildren(...(items.length ? items : [h('div', { class: 'ytls-empty' }, '（這部影片沒有字幕軌）')]));
   }
@@ -2570,9 +2604,9 @@
     ui.fullRows = st.cues.map((c, i) => {
       if (!c.text) return h('div', { class: 'ytls-gap' }, '♪');
       const row = h('div', { class: 'ytls-fl', onclick: () => seekTo(i) },
-        settings.showRoma && showRomaFor(c) ? h('div', { class: 'ytls-fr' }, c.ro) : null,
+        settings.showRoma && showRomaFor(c) ? h('div', { class: 'ytls-fr' }, R(c.ro)) : null,
         h('div', { class: 'ytls-fo' }, origNodes(c)),
-        c.tr && !sameText(c.tr, c.text) ? h('div', { class: 'ytls-ft' }, c.tr) : null);
+        c.tr && !sameText(c.tr, c.text) ? h('div', { class: 'ytls-ft' }, R(c.tr)) : null);
       return row;
     });
     ui.full.replaceChildren(...ui.fullRows);
@@ -2609,7 +2643,7 @@
     await setPref({ offset: st.offset });
   }
   function renderOffset() {
-    if (ui.offv) ui.offv.textContent = (st.offset >= 0 ? '+' : '') + (st.offset / 1000).toFixed(1) + ' 秒';
+    if (ui.offv) ui.offv.textContent = zh((st.offset >= 0 ? '+' : '') + (st.offset / 1000).toFixed(1) + ' 秒');
   }
 
   function applyNativeHide() {
@@ -2650,8 +2684,9 @@
 
   // 原文：有假名資料就用 <ruby> 把讀音標在漢字上方
   function origNodes(c) {
-    if (!settings.showFurigana || !c.rb || !c.rb.length) return [c.text];
-    return c.rb.map((s) => (s.r ? h('ruby', null, s.t, h('rt', null, s.r)) : s.t));
+    // 歌詞是資料：用文字節點放進去（介面切成簡體時不能被轉）
+    if (!settings.showFurigana || !c.rb || !c.rb.length) return [R(c.text)];
+    return c.rb.map((s) => (s.r ? h('ruby', null, R(s.t), h('rt', null, R(s.r))) : R(s.t)));
   }
 
   // 要顯示哪幾行：唱歌照「顯示設定」；看影片／直播自動決定
@@ -2800,6 +2835,13 @@
       if (ch) settings[k] = ch.newValue === undefined ? DEFAULTS[k] : ch.newValue;
     }
     if (before.enabled !== settings.enabled) { st.vid = null; onNav(); return; }
+    if (changes.targetLang) targetSaved = true;
+    if (before.uiLang !== settings.uiLang && wantCN(settings.uiLang) !== uiCN) {
+      uiCN = wantCN(settings.uiLang);
+      if (!targetSaved) settings.targetLang = uiCN ? 'zh-CN' : 'zh-TW'; // 沒自己選過翻譯語言：跟著介面換（下面會重新翻譯）
+      document.documentElement.classList.toggle('ytls-ui-cn', uiCN);
+      rebuildUI();
+    }
     if (before.kara !== settings.kara) { if (settings.kara) karaStart(); else karaStop(); }
     applySettingsToUI();
     renderFull();
@@ -2817,6 +2859,13 @@
     settings = { ...DEFAULTS };
     // Music 還沒自己調過時，先沿用 YouTube 的值
     for (const k of Object.keys(DEFAULTS)) if (storeKey(k) in saved) settings[k] = saved[storeKey(k)]; else if (k in saved) settings[k] = saved[k];
+    // 升級前就在用的人（已經有設定）：介面照舊用繁體，不要因為 Edge 是簡體就突然換掉；全新安裝才跟著 Edge
+    if (!('uiLang' in saved) && Object.keys(saved).length) { settings.uiLang = 'zh-TW'; chrome.storage.sync.set({ uiLang: 'zh-TW' }).catch(() => {}); }
+    uiCN = wantCN(settings.uiLang);
+    // 沒自己選過翻譯語言：跟著介面（簡體介面就翻成簡體）
+    targetSaved = 'targetLang' in saved;
+    if (!targetSaved) settings.targetLang = uiCN ? 'zh-CN' : 'zh-TW';
+    document.documentElement.classList.toggle('ytls-ui-cn', uiCN); // 簡體字型（overlay.css）
     document.addEventListener('yt-navigate-finish', () => onNav());
     window.addEventListener('popstate', () => setTimeout(onNav, 300));
     // 播放器 DOM 偶爾會被重建，定期確認按鈕與疊層還在
@@ -2832,7 +2881,7 @@
     // 掃描按鈕的預計時間跟著目前位置變（面板開著才有這個元素）
     setInterval(() => {
       const el = !st.scanning && document.querySelector('.ytls-scan-eta');
-      if (el) { const t = scanEtaText(); if (el.textContent !== t) el.textContent = t; }
+      if (el) { const t = zh(scanEtaText()); if (el.textContent !== t) el.textContent = t; }
     }, 1000);
     // 背景（service worker）閒置 30 秒會被瀏覽器收掉，下次要重載日文字典：有在用的 YouTube 分頁每 25 秒叫它一次
     const keep = () => { if (settings.enabled && st.vid && extAlive() && document.visibilityState === 'visible') bg('keepalive', {}).catch(() => {}); };

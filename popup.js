@@ -1,13 +1,47 @@
-const DEFAULTS = { enabled: true, mode: 'auto', targetLang: 'zh-TW', layout: 'ktv' };
+const DEFAULTS = { enabled: true, mode: 'auto', targetLang: 'zh-TW', layout: 'ktv', uiLang: 'auto' };
+
+// ---------- 介面語言 ----------
+// 簡體中文時把畫面上的字轉成簡體（lib/zhcn.js）；語言名稱（data-raw）不轉。程式後來改的字用 setText()，切換語言時才轉得回來
+let uiCN = false;
+const T = (s) => (uiCN && globalThis.YTLSZh ? YTLSZh.convert(s) : String(s));
+const orig = new Map();
+function wantCN(v) {
+  if (v === 'zh-CN') return true;
+  if (v === 'zh-TW') return false;
+  const l = (chrome.i18n && chrome.i18n.getUILanguage && chrome.i18n.getUILanguage()) || navigator.language || '';
+  return /^zh(-(cn|sg|hans).*)?$/i.test(l);
+}
+function setText(el, s) { el.dataset.src = s; el.textContent = T(s); }
+function applyLang() {
+  const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n; (n = walk.nextNode());) {
+    const p = n.parentElement;
+    if (!p || p.closest('[data-raw], [data-src], script, style')) continue;
+    if (!orig.has(n)) orig.set(n, n.nodeValue);
+    n.nodeValue = T(orig.get(n));
+  }
+  for (const el of document.querySelectorAll('[data-src]')) el.textContent = T(el.dataset.src);
+  for (const el of document.querySelectorAll('[placeholder]')) { if (!el.dataset.ph) el.dataset.ph = el.placeholder; el.placeholder = T(el.dataset.ph); }
+  document.title = T('YT 歌詞字幕');
+  document.documentElement.lang = uiCN ? 'zh-Hans' : 'zh-Hant';
+}
 
 (async () => {
-  const s = await chrome.storage.sync.get(DEFAULTS);
+  const saved = await chrome.storage.sync.get(null);
+  const s = {};
+  for (const k of Object.keys(DEFAULTS)) s[k] = k in saved ? saved[k] : DEFAULTS[k];
+  // 升級前就在用的人（已經有設定）：照舊用繁體（跟 content.js 一樣）；全新安裝才跟著 Edge
+  if (!('uiLang' in saved) && Object.keys(saved).length) { s.uiLang = 'zh-TW'; chrome.storage.sync.set({ uiLang: 'zh-TW' }); }
+  uiCN = wantCN(s.uiLang);
+  if (!('targetLang' in saved)) s.targetLang = uiCN ? 'zh-CN' : 'zh-TW'; // 沒自己選過翻譯語言：跟著介面（跟 content.js 一樣）
+  applyLang();
   for (const [k, v] of Object.entries(s)) {
     const el = document.getElementById(k);
     if (!el) continue;
     if (el.type === 'checkbox') el.checked = !!v; else el.value = v;
     el.addEventListener('change', () => {
       chrome.storage.sync.set({ [k]: el.type === 'checkbox' ? el.checked : el.value });
+      if (k === 'uiLang') { uiCN = wantCN(el.value); applyLang(); }
     });
   }
 })();
@@ -27,12 +61,12 @@ const DEFAULTS = { enabled: true, mode: 'auto', targetLang: 'zh-TW', layout: 'kt
   }
   if (tier < 4) {
     const local = eng.querySelector('option[value="local"]');
-    local.disabled = true; local.textContent = '本機（這個安裝沒有）';
-    document.getElementById('fallbackNote').textContent = '額度用完、沒網路 → 先暫停，恢復後自動繼續（這個安裝沒有本機聽寫）';
+    local.disabled = true; setText(local, '本機（這個安裝沒有）');
+    setText(document.getElementById('fallbackNote'), '額度用完、沒網路 → 先暫停，恢復後自動繼續（這個安裝沒有本機聽寫）');
     if (c.listenEngine !== 'cloud') { c.listenEngine = 'cloud'; chrome.storage.local.set({ listenEngine: 'cloud' }); }
   }
   eng.value = c.listenEngine; key.value = c.groqKey;
-  const show = (text, cls) => { msg.textContent = text; msg.className = cls || ''; };
+  const show = (text, cls) => { setText(msg, text); msg.className = cls || ''; };
   const sync = () => {
     box.hidden = eng.value !== 'cloud';
     if (eng.value === 'cloud' && !key.value.trim()) show('還沒填金鑰：先照下面的步驟拿一組' + (tier < 4 ? '（這個安裝只有雲端聽寫，沒填就不能用）' : '，沒填會照常用本機聽寫'), 'bad');

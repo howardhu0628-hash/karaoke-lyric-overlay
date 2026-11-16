@@ -13,7 +13,7 @@ NAME = "YTLyricSub-v" + VERSION
 OUT = ROOT / "dist" / NAME
 
 APP_FILES = ["manifest.json", "background.js", "content.js", "hook.js", "offscreen.html", "offscreen.js", "popup.html", "popup.js", "overlay.css", "README.md"]
-APP_DIRS = ["icons", "lib", "vendor", "native-host", "ocr-server", "listen-server"]
+APP_DIRS = ["icons", "_locales", "lib", "vendor", "native-host", "ocr-server", "listen-server"]
 SKIP_DIRS = {"cache", "tmp", "__pycache__", "node_modules"}
 SKIP_FILES = {"ytlyricsub.host.json", "com.claude.ytls.json"}  # 安裝時依筆電上的擴充功能 ID 重新產生
 SKIP_SUFFIXES = {".pyc", ".pyo", ".log"}
@@ -29,6 +29,37 @@ def copy_tree(src, dst):
             shutil.copy2(p, dst / rel)
 
 
+def to_zhcn(text):
+    """繁體 → 簡體（大陸用語），跟 lib/zhcn.js 同一份表、同一個做法（每輪最長的詞優先）。
+    檔名照實際的寫法：說明裡的「安裝.cmd」變成「安装.cmd」的話，照著找會找不到檔案。"""
+    import re
+    rounds = json.loads((ROOT / "lib" / "zhcn.json").read_text(encoding="utf-8"))["rounds"]
+    # 跟 lib/zhcn.js 的 FILE_RE 同一條規則
+    text = re.sub(r"「[^」\n]*\.(?:cmd|txt|ps1|log)」|[^\s「」（）()，。、：:；;]+\.(?:cmd|txt|ps1|log)\b",
+                  lambda m: "" + m.group(0) + "", text)
+    out = []
+    for seg in re.split(r"([^]*)", text):
+        if seg.startswith(""):
+            out.append(seg[1:-1])
+            continue
+        for table in rounds:
+            maxlen = max(map(len, table))
+            res, i = [], 0
+            while i < len(seg):
+                for n in range(min(maxlen, len(seg) - i), 0, -1):
+                    v = table.get(seg[i:i + n])
+                    if v is not None:
+                        res.append(v)
+                        i += n
+                        break
+                else:
+                    res.append(seg[i])
+                    i += 1
+            seg = "".join(res)
+        out.append(seg)
+    return "".join(out)
+
+
 def main():
     if OUT.exists():
         shutil.rmtree(OUT)
@@ -40,6 +71,11 @@ def main():
         copy_tree(ROOT / d, app / d)
     for f in (ROOT / "installer").iterdir():
         shutil.copy2(f, OUT / f.name)
+    # 簡體中文的說明書（跟原本一樣 BOM＋CRLF，舊記事本才不會亂碼）
+    # 「简体中文说明：请看…」那行是給繁體版用的（本來就是簡體，再轉一次會把「文件夹」轉歪），簡體版拿掉
+    readme = (ROOT / "installer" / "先看我.txt").read_bytes().decode("utf-8-sig")
+    readme = "".join(l for l in readme.splitlines(keepends=True) if "先看我-简体中文.txt" not in l)
+    (OUT / "先看我-简体中文.txt").write_bytes(b"\xef\xbb\xbf" + to_zhcn(readme).encode("utf-8"))
     zpath = OUT.parent / (NAME + ".zip")  # 不能用 with_suffix：版本號 1.0 的「.0」會被當成副檔名
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
         for p in sorted(OUT.rglob("*")):

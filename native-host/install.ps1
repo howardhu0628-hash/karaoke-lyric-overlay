@@ -5,6 +5,7 @@
 #   擴充功能 ID 在 edge://extensions 的「YT 歌詞字幕」卡片上；換資料夾重新載入後 ID 會變，要重跑一次。
 param([string]$ExtensionId = 'eodcndmiihigkmmaogbgplbjkdeapckh', [switch]$Uninstall)
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$zp = Join-Path $PSScriptRoot '..\lib\zhcn.ps1'; if (Test-Path -LiteralPath $zp) { . $zp } # Windows 是簡體中文時，畫面上的字轉成簡體
 $key = 'HKCU:\Software\Microsoft\Edge\NativeMessagingHosts\ytlyricsub.host'
 $manifest = Join-Path $PSScriptRoot 'ytlyricsub.host.json'
 Remove-Item 'HKCU:\Software\Microsoft\Edge\NativeMessagingHosts\com.claude.ytls' -ErrorAction SilentlyContinue

@@ -119,6 +119,10 @@ html.ytls-ytm .ytls-btn:hover { opacity: 1; color: #ffb347; background: rgba(255
   font: 13px/1.45 "Microsoft JhengHei", "Noto Sans TC", "Yu Gothic UI", sans-serif;
   overflow: hidden;
 }
+/* 介面是簡體中文：面板、「词」按鈕改用簡體字型 */
+html.ytls-ui-cn .ytls-panel { font-family: "Microsoft YaHei", "Noto Sans SC", "Yu Gothic UI", sans-serif; }
+html.ytls-ui-cn .ytls-btn.ytp-button { font-family: "Microsoft YaHei", sans-serif !important; }
+html.ytls-ytm.ytls-ui-cn .ytls-btn { font-family: "Microsoft YaHei", "Noto Sans SC", sans-serif; }
 .ytls-panel[hidden], .ytls-pane[hidden] { display: none !important; }
 .ytls-panel button, .ytls-panel input, .ytls-panel select {
   font: inherit; color: inherit;
