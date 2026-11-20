@@ -41,4 +41,12 @@ assert.strictEqual(S.findIndex(c, 0), -1); assert.strictEqual(S.findIndex(c, 300
 // json3
 const j = S.parseJson3({ events: [{ tStartMs: 0, dDurationMs: 5000, segs: [{ utf8: 'こんにちは' }] }, { tStartMs: 2000, aAppend: 1, segs: [{ utf8: '\n' }] }, { tStartMs: 3000, dDurationMs: 2000, segs: [{ utf8: '世界' }, { utf8: '\n次' }] }] });
 assert.deepStrictEqual(j.map(x => [x.start, x.end, x.text]), [[0, 3000, 'こんにちは'], [3000, 5000, '世界 次']]);
+// 翻唱：搜尋詞不帶翻唱者（標題裡 Cover 前那段、頻道名）
+assert.deepStrictEqual(S.buildQueries('トウキョウ・シャンディ・ランデヴ / 緑仙 Cover', '緑仙 / Ryushen'), ['トウキョウ・シャンディ・ランデヴ']);
+assert.deepStrictEqual(S.buildQueries('夜に駆ける / 星街すいせい(cover)', 'Suisei Channel'), ['夜に駆ける']);
+assert.strictEqual(S.buildQueries('ダンスロボットダンス / ナユタン星人 feat.初音ミク', 'ナユタン星人')[0], 'ダンスロボットダンス / ナユタン星人 feat.初音ミク');
+assert.deepStrictEqual(S.buildQueries('【Ado】BRAIN 歌いました', 'Ado'), ['BRAIN']);
+assert.deepStrictEqual(S.buildQueries('ロキ 歌ってみた ver.まふまふ', 'まふまふちゃんねる'), ['ロキ']);
+assert.deepStrictEqual(S.buildQueries('シャルル (cover) / 天月', 'x'), ['シャルル']);
+assert.deepStrictEqual(S.buildQueries('【Ado】うっせぇわ', 'Ado'), ['Ado うっせぇわ', 'うっせぇわ']);
 console.log('offline ok');

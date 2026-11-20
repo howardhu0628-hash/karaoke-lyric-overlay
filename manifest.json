@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "__MSG_name__",
   "default_locale": "zh_TW",
-  "version": "1.0.69",
+  "version": "1.0.70",
   "description": "__MSG_description__",
   "permissions": [
     "storage",
